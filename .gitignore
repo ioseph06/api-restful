@@ -1,0 +1,10 @@
+[Bb]in/
+[Oo]bj/
+[Ll]ogs/
+*.user
+*.suo
+*.cache
+*.dll
+*.pdb
+.vs/
+appsettings.Development.json # Opcional: si tiene secretos locales

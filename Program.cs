@@ -196,6 +196,25 @@ app.UseCors("PermitirTodo");
 app.UseAuthentication(); // ✅ Primero autenticamos
 app.UseAuthorization();  // ✅ Luego autorizamos
 app.MapControllers();
+
+// ✅ AUTO-MIGRACIONES: Aplica las migraciones pendientes al iniciar la app
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    try
+    {
+        Log.Information("Aplicando migraciones de base de datos...");
+        dbContext.Database.Migrate(); // Esto crea las tablas si no existen
+        Log.Information("Migraciones aplicadas exitosamente.");
+    }
+    catch (Exception ex)
+    {
+        Log.Fatal(ex, "Error al aplicar las migraciones de la base de datos.");
+        throw;
+    }
+}
+
+
 app.Run();
   
 }
