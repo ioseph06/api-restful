@@ -25,5 +25,5 @@ Tener instalado [Docker Desktop](https://www.docker.com/products/docker-desktop)
 ### Pasos
 1. Clona este repositorio:
    ```bash
-   git clone https://github.com/TU_USUARIO/api-productos-enterprise.git
-   cd api-productos-enterprise
+   git clone https://github.com/TU_USUARIO/api-restful.git
+   cd api-restful
