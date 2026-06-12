@@ -1,0 +1,60 @@
+
+services:
+  # 1. SERVICIO DE BASE DE DATOS (PostgreSQL)
+  db:
+    image: postgres:15-alpine
+    container_name: miapi_db
+    restart: always
+    environment:
+      POSTGRES_USER: appuser
+      POSTGRES_PASSWORD: supersecretpassword
+      POSTGRES_DB: appdb
+    ports:
+      - "5432:5432" # Expuesto solo para que puedas conectar herramientas como DBeaver si quieres
+    volumes:
+      - pgdata:/var/lib/postgresql/data # Persistencia: los datos no se borran al reiniciar el contenedor
+    networks:
+      - miapi_network
+
+  # 2. SERVICIO DE CACHÉ (Redis)
+  redis:
+    image: redis:7-alpine
+    container_name: miapi_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    networks:
+      - miapi_network
+
+  # 3. NUESTRA API (ASP.NET Core)
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: miapi_app
+    restart: always
+    ports:
+      - "8080:8080" # HTTP
+      - "8081:8081" # HTTPS (opcional)
+    environment:
+      # Estas variables sobrescriben lo que haya en appsettings.json
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Host=db;Port=5432;Database=appdb;Username=appuser;Password=supersecretpassword
+      - Jwt__Key=EstaEsUnaClaveSuperSecretaYMuyLargaParaProduccionReal123456!
+      # Nota cómo usamos "redis" (el nombre del servicio) en lugar de "localhost"
+      - Redis__Configuration=redis:6379 
+    depends_on:
+      - db
+      - redis
+    networks:
+      - miapi_network
+    volumes:
+      # Persistir los logs de Serilog en tu máquina host
+      - ./logs:/app/logs 
+
+volumes:
+  pgdata: # Volumen nombrado para la base de datos
+
+networks:
+  miapi_network:
+    driver: bridge
