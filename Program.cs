@@ -13,6 +13,9 @@ using Microsoft.Extensions.Caching.Distributed; // ✅ Nuevo using
 using Asp.Versioning; // ✅ Nuevo using
 using Asp.Versioning.ApiExplorer; // ✅ Nuevo using
 //using Microsoft.OpenApi.Models; // Add this using statement
+using HealthChecks.UI.Client; // Nuevo using
+using Microsoft.Extensions.Diagnostics.HealthChecks; // Nuevo using
+using Microsoft.AspNetCore.Diagnostics.HealthChecks; // ✅ Aquí vive HealthCheckOptions (para MapHealthChecks)
 
 // 1. CONFIGURACIÓN TEMPRANA DE SERILOG (Antes de WebApplication.CreateBuilder)
 Log.Logger = new LoggerConfiguration()
@@ -25,6 +28,9 @@ try
 {
   var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddHealthChecks()
+    .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!, name: "PostgreSQL")
+    .AddRedis(builder.Configuration["Redis:Configuration"] ?? "localhost:6379", name: "Redis");
 
 // 1. CONFIGURAR VERSIONADO DE API
 builder.Services.AddApiVersioning(options =>
@@ -161,12 +167,22 @@ builder.Services.AddScoped<IProductoService, ProductoService>();
 
 var app = builder.Build();
 
-// Aplicar migraciones automáticamente al arrancar.
+// ✅ AUTO-MIGRACIONES: Aplica las migraciones pendientes al iniciar la app.
 // Crea la base y las tablas si no existen (clave dentro del contenedor, que arranca con una BD vacía).
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.Migrate();
+    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    try
+    {
+        Log.Information("Aplicando migraciones de base de datos...");
+        dbContext.Database.Migrate(); // Esto crea las tablas si no existen
+        Log.Information("Migraciones aplicadas exitosamente.");
+    }
+    catch (Exception ex)
+    {
+        Log.Fatal(ex, "Error al aplicar las migraciones de la base de datos.");
+        throw;
+    }
 }
 
 app.UseRateLimiter();
@@ -197,44 +213,24 @@ app.UseAuthentication(); // ✅ Primero autenticamos
 app.UseAuthorization();  // ✅ Luego autorizamos
 app.MapControllers();
 
-// ✅ AUTO-MIGRACIONES: Aplica las migraciones pendientes al iniciar la app
-using (var scope = app.Services.CreateScope())
+app.MapHealthChecks("/health", new HealthCheckOptions
 {
-    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    try
+    ResponseWriter = async (context, report) =>
     {
-        Log.Information("Aplicando migraciones de base de datos...");
-        dbContext.Database.Migrate(); // Esto crea las tablas si no existen
-        Log.Information("Migraciones aplicadas exitosamente.");
+        context.Response.ContentType = "application/json";
+        var result = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            status = report.Status.ToString(),
+            checks = report.Entries.Select(e => new
+            {
+                name = e.Key,
+                status = e.Value.Status.ToString(),
+                description = e.Value.Description
+            })
+        });
+        await context.Response.WriteAsync(result);
     }
-    catch (Exception ex)
-    {
-        Log.Fatal(ex, "Error al aplicar las migraciones de la base de datos.");
-        throw;
-    }
-}
-
-// Program.cs
-// ... (toda tu configuración de middlewares)
-
-// ✅ AUTO-MIGRACIONES: Aplica las migraciones pendientes al iniciar la app
-using (var scope = app.Services.CreateScope())
-{
-    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    try
-    {
-        Log.Information("Aplicando migraciones de base de datos...");
-        dbContext.Database.Migrate(); // Esto crea las tablas si no existen
-        Log.Information("Migraciones aplicadas exitosamente.");
-    }
-    catch (Exception ex)
-    {
-        Log.Fatal(ex, "Error al aplicar las migraciones de la base de datos.");
-        throw;
-    }
-}
-
-
+});
 
 app.Run();
   

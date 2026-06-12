@@ -1,0 +1,35 @@
+name: .NET CI Pipeline
+
+# Se ejecuta en cada push a 'main' o 'develop', y en cada Pull Request
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1. Descargar el código del repositorio
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # 2. Instalar el SDK de .NET 10
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+
+    # 3. Restaurar los paquetes NuGet
+    - name: Restore dependencies
+      run: dotnet restore
+
+    # 4. Compilar el proyecto (fallará si hay errores de sintaxis)
+    - name: Build
+      run: dotnet build --no-restore --configuration Release
+
+    # 5. Ejecutar las pruebas unitarias
+    - name: Test
+      run: dotnet test --no-build --configuration Release --verbosity normal

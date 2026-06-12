@@ -4,6 +4,7 @@ using Microsoft.Extensions.Caching.Distributed; // ✅ Nuevo using
 using MiPrimeraApi.Data;
 using MiPrimeraApi.DTOs;
 using MiPrimeraApi.Models;
+using MiPrimeraApi.Common; // ✅ Nuevo using
 using System.Collections.Generic;
 using System.Text.Json; // ✅ Nuevo using
 using System.Threading.Tasks;
@@ -106,5 +107,48 @@ namespace MiPrimeraApi.Services
             await _cache.RemoveAsync(CacheKeyTodos);
             return true;
         }
+
+
+// Services/ProductoService.cs (Reemplaza ObtenerTodosAsync por este)
+public async Task<PagedResult<ProductoDto>> ObtenerPaginadoAsync(ProductoQueryParams queryParams)
+{
+    var query = _context.Productos.AsQueryable();
+
+    // 1. Filtrado
+    if (!string.IsNullOrWhiteSpace(queryParams.Nombre))
+    {
+        query = query.Where(p => p.Nombre.Contains(queryParams.Nombre));
+    }
+    if (queryParams.EnStock.HasValue)
+    {
+        query = query.Where(p => p.EnStock == queryParams.EnStock.Value);
+    }
+
+    // 2. Ordenamiento (Básico pero efectivo)
+    query = queryParams.OrderBy?.ToLower() switch
+    {
+        "precio" => queryParams.IsDescending ? query.OrderByDescending(p => p.Precio) : query.OrderBy(p => p.Precio),
+        "nombre" => queryParams.IsDescending ? query.OrderByDescending(p => p.Nombre) : query.OrderBy(p => p.Nombre),
+        _ => query.OrderBy(p => p.Id) // Default
+    };
+
+    // 3. Paginación y Conteo
+    var totalCount = await query.CountAsync();
+    var items = await query
+        .Skip((queryParams.PageNumber - 1) * queryParams.PageSize)
+        .Take(queryParams.PageSize)
+        .ToListAsync();
+
+    return new PagedResult<ProductoDto>
+    {
+        Items = _mapper.Map<IEnumerable<ProductoDto>>(items),
+        PageNumber = queryParams.PageNumber,
+        PageSize = queryParams.PageSize,
+        TotalCount = totalCount
+    };
+}
+
+
+
     }
 }

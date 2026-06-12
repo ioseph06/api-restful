@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MiPrimeraApi.DTOs;
 using MiPrimeraApi.Services;
+using MiPrimeraApi.Common; // Para usar PagedResult
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.RateLimiting; // ✅ Nuevo using
@@ -22,21 +23,30 @@ namespace MiPrimeraApi.Controllers
             _logger = logger;
         }
 
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<ProductoDto>>> ObtenerTodos(
-            [FromQuery] string? nombre, 
-            [FromQuery] bool? enStock)
-        {
-            var productos = await _productoService.ObtenerTodosAsync();
 
-            if (!string.IsNullOrWhiteSpace(nombre))
-                productos = productos.Where(p => p.Nombre.Contains(nombre, System.StringComparison.OrdinalIgnoreCase));
+// Controllers/ProductosController.cs
+[HttpGet]
+public async Task<ActionResult<PagedResult<ProductoDto>>> ObtenerPaginado([AsParameters] ProductoQueryParams queryParams)
+{
+    var resultado = await _productoService.ObtenerPaginadoAsync(queryParams);
+    return Ok(resultado);
+}
 
-            if (enStock.HasValue)
-                productos = productos.Where(p => p.EnStock == enStock.Value);
-
-            return Ok(productos);
-        }
+//        [HttpGet]
+//        public async Task<ActionResult<IEnumerable<ProductoDto>>> ObtenerTodos(
+//            [FromQuery] string? nombre, 
+//            [FromQuery] bool? enStock)
+//        {
+//            var productos = await _productoService.ObtenerTodosAsync();
+//
+//            if (!string.IsNullOrWhiteSpace(nombre))
+//                productos = productos.Where(p => p.Nombre.Contains(nombre, System.StringComparison.OrdinalIgnoreCase));
+//
+//            if (enStock.HasValue)
+//                productos = productos.Where(p => p.EnStock == enStock.Value);
+//
+//            return Ok(productos);
+//        }
 
         [HttpGet("{id}")]
         public async Task<ActionResult<ProductoDto>> ObtenerPorId(int id)
@@ -85,5 +95,8 @@ namespace MiPrimeraApi.Controllers
                 return NotFound();
             return NoContent();
         }
+
+
+
     }
 }
