@@ -6,13 +6,16 @@ using MiPrimeraApi.Common; // Para usar PagedResult
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.RateLimiting; // ✅ Nuevo using
+using Asp.Versioning; // ✅ Nuevo using
 
 namespace MiPrimeraApi.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [ApiVersion("1.0")] // ✅ Declaramos que este controlador es la v1.0
+    //[Route("api/[controller]")]
+     [Route("api/v{version:apiVersion}/[controller]")] 
     [Authorize]
-     [EnableRateLimiting("LimitePorIP")] // Aplica la política de rate limiting a este controlador
+    [EnableRateLimiting("LimitePorIP")] // Aplica la política de rate limiting a este controlador
     public class ProductosController : ControllerBase
     {
         private readonly IProductoService _productoService;
@@ -25,28 +28,28 @@ namespace MiPrimeraApi.Controllers
 
 
 // Controllers/ProductosController.cs
-[HttpGet]
-public async Task<ActionResult<PagedResult<ProductoDto>>> ObtenerPaginado([AsParameters] ProductoQueryParams queryParams)
-{
-    var resultado = await _productoService.ObtenerPaginadoAsync(queryParams);
-    return Ok(resultado);
-}
+//[HttpGet]
+//public async Task<ActionResult<PagedResult<ProductoDto>>> ObtenerPaginado([AsParameters] ProductoQueryParams queryParams)
+//{
+//    var resultado = await _productoService.ObtenerPaginadoAsync(queryParams);
+//    return Ok(resultado);
+//}
 
-//        [HttpGet]
-//        public async Task<ActionResult<IEnumerable<ProductoDto>>> ObtenerTodos(
-//            [FromQuery] string? nombre, 
-//            [FromQuery] bool? enStock)
-//        {
-//            var productos = await _productoService.ObtenerTodosAsync();
-//
-//            if (!string.IsNullOrWhiteSpace(nombre))
-//                productos = productos.Where(p => p.Nombre.Contains(nombre, System.StringComparison.OrdinalIgnoreCase));
-//
-//            if (enStock.HasValue)
-//                productos = productos.Where(p => p.EnStock == enStock.Value);
-//
-//            return Ok(productos);
-//        }
+        [HttpGet]
+        public async Task<ActionResult<IEnumerable<ProductoDto>>> ObtenerTodos(
+            [FromQuery] string? nombre, 
+            [FromQuery] bool? enStock)
+        {
+            var productos = await _productoService.ObtenerTodosAsync();
+
+            if (!string.IsNullOrWhiteSpace(nombre))
+                productos = productos.Where(p => p.Nombre.Contains(nombre, System.StringComparison.OrdinalIgnoreCase));
+
+            if (enStock.HasValue)
+                productos = productos.Where(p => p.EnStock == enStock.Value);
+
+            return Ok(productos);
+        }
 
         [HttpGet("{id}")]
         public async Task<ActionResult<ProductoDto>> ObtenerPorId(int id)
@@ -57,6 +60,7 @@ public async Task<ActionResult<PagedResult<ProductoDto>>> ObtenerPaginado([AsPar
         }
 
         [HttpPost]
+        [Authorize] // Solo los usuarios con rol "Admin" pueden crear productos
         public async Task<ActionResult<ProductoDto>> Crear([FromBody] CrearProductoDto nuevoProducto)
         {
             _logger.LogInformation("Intentando crear producto: {ProductName} con precio {Price}", 
@@ -81,6 +85,7 @@ public async Task<ActionResult<PagedResult<ProductoDto>>> ObtenerPaginado([AsPar
         }
 
         [HttpPut("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Actualizar(int id, [FromBody] ActualizarProductoDto producto)
         {
             if (!await _productoService.ActualizarAsync(id, producto))
@@ -89,6 +94,7 @@ public async Task<ActionResult<PagedResult<ProductoDto>>> ObtenerPaginado([AsPar
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Eliminar(int id)
         {
             if (!await _productoService.EliminarAsync(id))

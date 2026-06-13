@@ -52,6 +52,19 @@ services:
       # Persistir los logs de Serilog en tu máquina host
       - ./logs:/app/logs 
 
+  rabbitmq:
+    image: rabbitmq:3-management # La imagen con el panel de administración web
+    container_name: miapi_rabbitmq
+    restart: always
+    ports:
+      - "5672:5672"   # Puerto para la comunicación de mensajes (AMQP)
+      - "15672:15672" # Puerto para el panel de administración web
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    networks:
+      - miapi_network
+
 volumes:
   pgdata: # Volumen nombrado para la base de datos
 

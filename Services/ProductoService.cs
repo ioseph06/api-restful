@@ -9,6 +9,9 @@ using System.Collections.Generic;
 using System.Text.Json; // ✅ Nuevo using
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging; // Para ver si funciona
+using MassTransit; // ✅ Nuevo using
+using MiPrimeraApi.Events; // ✅ Nuevo using
+
 
 namespace MiPrimeraApi.Services
 {
@@ -18,24 +21,30 @@ namespace MiPrimeraApi.Services
         private readonly IMapper _mapper;
         private readonly IDistributedCache _cache; // ✅ Inyectado
         private readonly ILogger<ProductoService> _logger;
+        private readonly IPublishEndpoint _publishEndpoint; // ✅ Inyectado
         private const string CacheKeyTodos = "productos_todos";
-        public ProductoService(AppDbContext context, IMapper mapper, IDistributedCache cache, ILogger<ProductoService> logger)
+        public ProductoService(AppDbContext context,
+        IMapper mapper,
+        IDistributedCache cache,
+        ILogger<ProductoService> logger,
+        IPublishEndpoint publishEndpoint)
         {
             _context = context;
             _mapper = mapper;
             _cache = cache;
             _logger = logger;
+            _publishEndpoint = publishEndpoint;
         }
 
         public async Task<IEnumerable<ProductoDto>> ObtenerTodosAsync()
         {
             // 1. INTENTAR OBTENER DE LA CACHÉ
             var cachedData = await _cache.GetStringAsync(CacheKeyTodos);
-            
+
             if (!string.IsNullOrEmpty(cachedData))
             {
                 _logger.LogInformation("✅ Datos obtenidos de REDIS (Caché)");
-             
+
                 var deserializedData = JsonSerializer.Deserialize<IEnumerable<ProductoDto>>(cachedData);
                 return deserializedData ?? Enumerable.Empty<ProductoDto>();
 
@@ -63,7 +72,7 @@ namespace MiPrimeraApi.Services
         {
             var producto = await _context.Productos.FindAsync(id);
             if (producto == null) return null;
-            
+
             return _mapper.Map<ProductoDto>(producto);
         }
 
@@ -72,7 +81,18 @@ namespace MiPrimeraApi.Services
             var producto = _mapper.Map<Producto>(dto);
             _context.Productos.Add(producto);
             await _context.SaveChangesAsync();
-            
+
+            // 🌟 PUBLICAR EL EVENTO
+            // Esto es asíncrono y rapidísimo. No espera a que el Consumer termine.
+            await _publishEndpoint.Publish(new ProductoCreadoEvent(
+                producto.Id,
+                producto.Nombre,
+                producto.Precio,
+                DateTime.UtcNow
+            ));
+
+            _logger.LogInformation("Evento ProductoCreadoEvent publicado para el ID: {Id}", producto.Id);
+
             // 🚨 4. INVALIDAR LA CACHÉ (¡MUY IMPORTANTE!)
             // Si creamos un producto, la lista "todos" ya no es válida. La borramos.
             await _cache.RemoveAsync(CacheKeyTodos);
@@ -80,6 +100,20 @@ namespace MiPrimeraApi.Services
 
             return _mapper.Map<ProductoDto>(producto);
         }
+
+        //        public async Task<ProductoDto> CrearAsync(CrearProductoDto dto)
+        //        {
+        //            var producto = _mapper.Map<Producto>(dto);
+        //            _context.Productos.Add(producto);
+        //            await _context.SaveChangesAsync();
+        //            
+        //            // 🚨 4. INVALIDAR LA CACHÉ (¡MUY IMPORTANTE!)
+        //            // Si creamos un producto, la lista "todos" ya no es válida. La borramos.
+        //            await _cache.RemoveAsync(CacheKeyTodos);
+        //            _logger.LogInformation("🗑️ Caché de 'todos los productos' invalidada por creación.");
+
+        //            return _mapper.Map<ProductoDto>(producto);
+        //        }
 
         public async Task<bool> ActualizarAsync(int id, ActualizarProductoDto dto)
         {
@@ -90,9 +124,9 @@ namespace MiPrimeraApi.Services
 
             // Mapeamos los campos del DTO a la entidad existente
             _mapper.Map(dto, existente);
-            
+
             await _context.SaveChangesAsync();
-            
+
             await _cache.RemoveAsync(CacheKeyTodos);
             return true;
         }
@@ -109,44 +143,44 @@ namespace MiPrimeraApi.Services
         }
 
 
-// Services/ProductoService.cs (Reemplaza ObtenerTodosAsync por este)
-public async Task<PagedResult<ProductoDto>> ObtenerPaginadoAsync(ProductoQueryParams queryParams)
-{
-    var query = _context.Productos.AsQueryable();
+        // Services/ProductoService.cs (Reemplaza ObtenerTodosAsync por este)
+        public async Task<PagedResult<ProductoDto>> ObtenerPaginadoAsync(ProductoQueryParams queryParams)
+        {
+            var query = _context.Productos.AsQueryable();
 
-    // 1. Filtrado
-    if (!string.IsNullOrWhiteSpace(queryParams.Nombre))
-    {
-        query = query.Where(p => p.Nombre.Contains(queryParams.Nombre));
-    }
-    if (queryParams.EnStock.HasValue)
-    {
-        query = query.Where(p => p.EnStock == queryParams.EnStock.Value);
-    }
+            // 1. Filtrado
+            if (!string.IsNullOrWhiteSpace(queryParams.Nombre))
+            {
+                query = query.Where(p => p.Nombre.Contains(queryParams.Nombre));
+            }
+            if (queryParams.EnStock.HasValue)
+            {
+                query = query.Where(p => p.EnStock == queryParams.EnStock.Value);
+            }
 
-    // 2. Ordenamiento (Básico pero efectivo)
-    query = queryParams.OrderBy?.ToLower() switch
-    {
-        "precio" => queryParams.IsDescending ? query.OrderByDescending(p => p.Precio) : query.OrderBy(p => p.Precio),
-        "nombre" => queryParams.IsDescending ? query.OrderByDescending(p => p.Nombre) : query.OrderBy(p => p.Nombre),
-        _ => query.OrderBy(p => p.Id) // Default
-    };
+            // 2. Ordenamiento (Básico pero efectivo)
+            query = queryParams.OrderBy?.ToLower() switch
+            {
+                "precio" => queryParams.IsDescending ? query.OrderByDescending(p => p.Precio) : query.OrderBy(p => p.Precio),
+                "nombre" => queryParams.IsDescending ? query.OrderByDescending(p => p.Nombre) : query.OrderBy(p => p.Nombre),
+                _ => query.OrderBy(p => p.Id) // Default
+            };
 
-    // 3. Paginación y Conteo
-    var totalCount = await query.CountAsync();
-    var items = await query
-        .Skip((queryParams.PageNumber - 1) * queryParams.PageSize)
-        .Take(queryParams.PageSize)
-        .ToListAsync();
+            // 3. Paginación y Conteo
+            var totalCount = await query.CountAsync();
+            var items = await query
+                .Skip((queryParams.PageNumber - 1) * queryParams.PageSize)
+                .Take(queryParams.PageSize)
+                .ToListAsync();
 
-    return new PagedResult<ProductoDto>
-    {
-        Items = _mapper.Map<IEnumerable<ProductoDto>>(items),
-        PageNumber = queryParams.PageNumber,
-        PageSize = queryParams.PageSize,
-        TotalCount = totalCount
-    };
-}
+            return new PagedResult<ProductoDto>
+            {
+                Items = _mapper.Map<IEnumerable<ProductoDto>>(items),
+                PageNumber = queryParams.PageNumber,
+                PageSize = queryParams.PageSize,
+                TotalCount = totalCount
+            };
+        }
 
 
 

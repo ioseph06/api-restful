@@ -7,6 +7,7 @@ using MiPrimeraApi.Services;
 using MiPrimeraApi.Data;
 using MiPrimeraApi.Mappings; // ✅ Nuevo using
 using MiPrimeraApi.Middlewares;
+using MiPrimeraApi.Models; // ✅ Nuevo using para ApplicationUser
 using Microsoft.AspNetCore.RateLimiting; // ✅ Nuevo using
 using System.Threading.RateLimiting;    // ✅ Nuevo using
 using Microsoft.Extensions.Caching.Distributed; // ✅ Nuevo using
@@ -15,6 +16,13 @@ using Asp.Versioning.ApiExplorer; // ✅ Nuevo using
 using MiPrimeraApi.Swagger; // ✅ ConfigureSwaggerOptions (un SwaggerDoc por versión de la API)
 //using Microsoft.Extensions.Diagnostics.HealthChecks; // Nuevo using
 using Microsoft.AspNetCore.Diagnostics.HealthChecks; // ✅ Aquí vive HealthCheckOptions (para MapHealthChecks)
+using Microsoft.AspNetCore.Identity;
+using MassTransit;
+using MiPrimeraApi.Consumers;
+//using Microsoft.AspNetCore.Authentication.JwtBearer;
+//using Microsoft.IdentityModel.Tokens;
+//using System.Text;
+
 
 // Program.cs
 
@@ -103,27 +111,8 @@ builder.Services.AddStackExchangeRedisCache(options =>
     options.InstanceName = "MiApi_";
 });
 
-// 1. CONFIGURAR AUTENTICACIÓN JWT
-var claveSecreta = "EstaEsUnaClaveSuperSecretaYMuyLargaParaElEjemplo123!"; // Mínimo 16 caracteres
-var key = Encoding.ASCII.GetBytes(claveSecreta);
-
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    options.RequireHttpsMetadata = false; // Poner en true en producción
-    options.SaveToken = true;
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuerSigningKey = true,
-        IssuerSigningKey = new SymmetricSecurityKey(key),
-        ValidateIssuer = false, // Para simplificar el ejemplo
-        ValidateAudience = false // Para simplificar el ejemplo
-    };
-});
+// La autenticación JWT se configura más abajo (un único bloque AddAuthentication/AddJwtBearer),
+// después de AddIdentity. Tener dos bloques registraba el esquema "Bearer" dos veces.
 
 // Cadena de conexión a PostgreSQL.
 // En el contenedor la inyecta docker-compose (ConnectionStrings__DefaultConnection, Host=db).
@@ -146,6 +135,70 @@ builder.Services.AddCors(options =>
               .AllowAnyHeader());
 });
 builder.Services.AddScoped<IProductoService, ProductoService>();
+
+
+
+// 1. CONFIGURAR ASP.NET CORE IDENTITY
+builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
+{
+    // Configuración de seguridad de contraseñas
+    options.Password.RequireDigit = true;
+    options.Password.RequireLowercase = true;
+    options.Password.RequireUppercase = true;
+    options.Password.RequireNonAlphanumeric = false;
+    options.Password.RequiredLength = 8;
+    
+    // Configuración de bloqueo por intentos fallidos
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
+    options.Lockout.MaxFailedAccessAttempts = 5;
+})
+.AddEntityFrameworkStores<AppDbContext>() // Usa nuestro DbContext existente
+.AddDefaultTokenProviders();
+
+// 2. CONFIGURAR JWT PARA LEER LOS USUARIOS DE IDENTITY
+var jwtKey = builder.Configuration["Jwt:Key"] ?? "ClaveSuperSecretaDeProduccion1234567890!";
+var key1 = Encoding.UTF8.GetBytes(jwtKey); // UTF8 para que coincida con la firma del AuthController
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.RequireHttpsMetadata = false; // True en producción real con HTTPS
+    options.SaveToken = true;
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(key1),
+        ValidateIssuer = false,
+        ValidateAudience = false,
+        // Importante: Mapear el "Name" y "Role" de Identity a Claims de JWT
+        NameClaimType = "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name",
+        RoleClaimType = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
+    };
+});
+
+
+builder.Services.AddMassTransit( x=>
+{
+    x.AddConsumer<ProductoCreadoConsumer>();
+
+
+x.UsingRabbitMq((context, cfg) =>
+{
+    cfg.Host("rabbitmq", "/", h =>
+    {
+        h.Username("guest");
+        h.Password("guest");
+    });
+
+    cfg.ConfigureEndpoints(context);
+});
+
+});
+
 
 var app = builder.Build();
 
@@ -214,10 +267,26 @@ app.MapHealthChecks("/health", new HealthCheckOptions
     }
 });
 
-app.Run();
-  
+// Program.cs (Al final, antes de app.Run())
+using (var scope = app.Services.CreateScope())
+{
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+    var roles = new[] { "Admin", "User" };
+
+    foreach (var role in roles)
+    {
+        if (!await roleManager.RoleExistsAsync(role))
+        {
+            await roleManager.CreateAsync(new IdentityRole(role));
+        }
+    }
 }
-catch (Exception ex)
+
+app.Run();
+}
+// El filtro 'when' deja pasar HostAbortedException: la lanza 'dotnet ef' a propósito
+// al abortar el host para inspeccionar el modelo. No es un fallo real, así que no la logueamos.
+catch (Exception ex) when (ex is not HostAbortedException)
 {
     Log.Fatal(ex, "La aplicación falló al iniciar");
 }
