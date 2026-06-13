@@ -12,10 +12,12 @@ using System.Threading.RateLimiting;    // ✅ Nuevo using
 using Microsoft.Extensions.Caching.Distributed; // ✅ Nuevo using
 using Asp.Versioning; // ✅ Nuevo using
 using Asp.Versioning.ApiExplorer; // ✅ Nuevo using
-//using Microsoft.OpenApi.Models; // Add this using statement
-using HealthChecks.UI.Client; // Nuevo using
-using Microsoft.Extensions.Diagnostics.HealthChecks; // Nuevo using
+using MiPrimeraApi.Swagger; // ✅ ConfigureSwaggerOptions (un SwaggerDoc por versión de la API)
+//using Microsoft.Extensions.Diagnostics.HealthChecks; // Nuevo using
 using Microsoft.AspNetCore.Diagnostics.HealthChecks; // ✅ Aquí vive HealthCheckOptions (para MapHealthChecks)
+
+// Program.cs
+
 
 // 1. CONFIGURACIÓN TEMPRANA DE SERILOG (Antes de WebApplication.CreateBuilder)
 Log.Logger = new LoggerConfiguration()
@@ -52,24 +54,10 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
 // 3. CONFIGURAR SWAGGER PARA MÚLTIPLES VERSIONES
-//builder.Services.AddSwaggerGen(options =>
-//{
-//    // Esto le dice a Swagger que genere un documento por cada versión descubierta
-//    var provider = builder.Services.BuildServiceProvider().GetRequiredService<IApiVersionDescriptionProvider>();
-//    
-//    foreach (var description in provider.ApiVersionDescriptions)
-//    {
-//        options.SwaggerDoc(
-//            description.GroupName,
-//            new Microsoft.OpenApi.Models.OpenApiInfo
-//            {
-//                Title = $"MiPrimeraApi {description.ApiVersion}",
-//                Version = description.ApiVersion.ToString(),
-//                Description = description.IsDeprecated ? "Esta versión está obsoleta." : "API de Productos activa."
-//            });
-//    }
-//});
-
+builder.Services.AddSwaggerGen();
+// ConfigureSwaggerOptions (Swagger/ConfigureSwaggerOptions.cs) crea un SwaggerDoc por versión.
+// Al registrarla como IConfigureOptions, el contenedor le inyecta IApiVersionDescriptionProvider.
+builder.Services.ConfigureOptions<ConfigureSwaggerOptions>();
 
 
 // 1. CONFIGURAR POLÍTICAS DE RATE LIMITING
@@ -146,9 +134,6 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
-// Add services to the container.
-builder.Services.AddControllers();
-
 // Registrar AutoMapper
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 
@@ -160,9 +145,6 @@ builder.Services.AddCors(options =>
               .AllowAnyMethod()
               .AllowAnyHeader());
 });
-// Aprende más sobre la configuración de Swagger/OpenAPI en https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(); // <--- Asegúrate de que esto esté
 builder.Services.AddScoped<IProductoService, ProductoService>();
 
 var app = builder.Build();
