@@ -1,4 +1,3 @@
-// DTOs/Auth/LoginDto.cs
 using System.ComponentModel.DataAnnotations;
 
 namespace MiPrimeraApi.DTOs.Auth

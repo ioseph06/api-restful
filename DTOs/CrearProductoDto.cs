@@ -1,4 +1,3 @@
-// DTOs/CrearProductoDto.cs
 using System.ComponentModel.DataAnnotations;
 
 namespace MiPrimeraApi.DTOs

@@ -1,4 +1,3 @@
-// DTOs/Auth/AuthResponseDto.cs
 namespace MiPrimeraApi.DTOs.Auth
 {
     public class AuthResponseDto

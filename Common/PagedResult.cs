@@ -1,6 +1,3 @@
-// Common/PagedResult.cs
-using System.Collections.Generic;
-
 namespace MiPrimeraApi.Common
 {
     public class PagedResult<T>

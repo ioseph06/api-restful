@@ -2,9 +2,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MiPrimeraApi.DTOs;
 using MiPrimeraApi.Services;
-using MiPrimeraApi.Common; // Para usar PagedResult
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.RateLimiting; // ✅ Nuevo using
 using Asp.Versioning; // ✅ Nuevo using
 

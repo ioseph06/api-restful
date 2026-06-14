@@ -1,8 +1,6 @@
 // Consumers/ProductoCreadoConsumer.cs
 using MassTransit;
-using Microsoft.Extensions.Logging;
 using MiPrimeraApi.Events;
-using System.Threading.Tasks;
 
 namespace MiPrimeraApi.Consumers
 {

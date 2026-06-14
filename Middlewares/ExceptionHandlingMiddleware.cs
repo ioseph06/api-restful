@@ -1,11 +1,6 @@
 // Middlewares/ExceptionHandlingMiddleware.cs
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
-using Serilog;
-using System;
 using System.Net;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace MiPrimeraApi.Middlewares
 {

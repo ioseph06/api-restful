@@ -1,4 +1,3 @@
-// DTOs/Auth/RegisterDto.cs
 using System.ComponentModel.DataAnnotations;
 
 namespace MiPrimeraApi.DTOs.Auth

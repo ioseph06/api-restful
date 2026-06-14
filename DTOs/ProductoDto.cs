@@ -1,4 +1,3 @@
-// DTOs/ProductoDto.cs
 namespace MiPrimeraApi.DTOs
 {
     public class ProductoDto

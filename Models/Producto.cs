@@ -1,4 +1,3 @@
-// Models/Producto.cs
 using System.ComponentModel.DataAnnotations;
 
 namespace MiPrimeraApi.Models

@@ -1,4 +1,3 @@
-// DTOs/ProductoQueryParams.cs
 namespace MiPrimeraApi.DTOs
 {
     public class ProductoQueryParams

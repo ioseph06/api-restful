@@ -1,4 +1,3 @@
-// Mappings/MappingProfile.cs
 using AutoMapper;
 using MiPrimeraApi.DTOs;
 using MiPrimeraApi.Models;

@@ -1,4 +1,3 @@
-// Models/ApplicationUser.cs
 using Microsoft.AspNetCore.Identity;
 
 namespace MiPrimeraApi.Models

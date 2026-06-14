@@ -1,6 +1,3 @@
-// Middlewares/ErrorResponse.cs
-using System;
-
 namespace MiPrimeraApi.Middlewares
 {
     public class ErrorResponse
