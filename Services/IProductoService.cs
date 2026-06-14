@@ -1,8 +1,5 @@
 using MiPrimeraApi.DTOs;
 using MiPrimeraApi.Common;
-using MiPrimeraApi.Models;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace MiPrimeraApi.Services
 {

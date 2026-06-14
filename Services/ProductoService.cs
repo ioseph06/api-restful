@@ -5,10 +5,7 @@ using MiPrimeraApi.Data;
 using MiPrimeraApi.DTOs;
 using MiPrimeraApi.Models;
 using MiPrimeraApi.Common; // ✅ Nuevo using
-using System.Collections.Generic;
 using System.Text.Json; // ✅ Nuevo using
-using System.Threading.Tasks;
-using Microsoft.Extensions.Logging; // Para ver si funciona
 using MassTransit; // ✅ Nuevo using
 using MiPrimeraApi.Events; // ✅ Nuevo using
 

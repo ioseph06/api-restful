@@ -1,33 +1,25 @@
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+
+using System.Text;
+using System.Threading.RateLimiting;    // ✅ Nuevo using
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Serilog;
-using System.Text;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks; // ✅ Aquí vive HealthCheckOptions (para MapHealthChecks)
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting; // ✅ Nuevo using
+using Asp.Versioning; // ✅ Nuevo using
+using Asp.Versioning.ApiExplorer; // ✅ Nuevo using
+using MiPrimeraApi.Swagger; // ✅ ConfigureSwaggerOptions (un SwaggerDoc por versión de la API)
+using MiPrimeraApi.Consumers;
 using MiPrimeraApi.Services;
 using MiPrimeraApi.Data;
 using MiPrimeraApi.Mappings; // ✅ Nuevo using
 using MiPrimeraApi.Middlewares;
 using MiPrimeraApi.Models; // ✅ Nuevo using para ApplicationUser
-using Microsoft.AspNetCore.RateLimiting; // ✅ Nuevo using
-using System.Threading.RateLimiting;    // ✅ Nuevo using
-using Microsoft.Extensions.Caching.Distributed; // ✅ Nuevo using
-using Asp.Versioning; // ✅ Nuevo using
-using Asp.Versioning.ApiExplorer; // ✅ Nuevo using
-using MiPrimeraApi.Swagger; // ✅ ConfigureSwaggerOptions (un SwaggerDoc por versión de la API)
-//using Microsoft.Extensions.Diagnostics.HealthChecks; // Nuevo using
-using Microsoft.AspNetCore.Diagnostics.HealthChecks; // ✅ Aquí vive HealthCheckOptions (para MapHealthChecks)
-using Microsoft.AspNetCore.Identity;
+using Serilog;
 using MassTransit;
-using MiPrimeraApi.Consumers;
-//using Microsoft.AspNetCore.Authentication.JwtBearer;
-//using Microsoft.IdentityModel.Tokens;
-//using System.Text;
 
-
-// Program.cs
-
-
-// 1. CONFIGURACIÓN TEMPRANA DE SERILOG (Antes de WebApplication.CreateBuilder)
+//CONFIGURACIÓN TEMPRANA DE SERILOG (Antes de WebApplication.CreateBuilder)
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information() // Nivel mínimo de log
     .WriteTo.Console()          // Escribe en la terminal
@@ -42,7 +34,7 @@ builder.Services.AddHealthChecks()
     .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!, name: "PostgreSQL")
     .AddRedis(builder.Configuration["Redis:Configuration"] ?? "localhost:6379", name: "Redis");
 
-// 1. CONFIGURAR VERSIONADO DE API
+//CONFIGURAR VERSIONADO DE API
 builder.Services.AddApiVersioning(options =>
 {
     options.DefaultApiVersion = new ApiVersion(1, 0); // Versión por defecto
@@ -51,7 +43,7 @@ builder.Services.AddApiVersioning(options =>
     options.ApiVersionReader = new UrlSegmentApiVersionReader(); // Lee la versión desde la URL: /api/v1/...
 })
 
-// 2. CONFIGURAR API EXPLORER (Para que Swagger funcione con versiones)
+//CONFIGURAR API EXPLORER (Para que Swagger funcione con versiones)
     .AddApiExplorer(options => // ✅ Correct way to add ApiExplorer in newer versions if using the combined package
     {
         options.GroupNameFormat = "'v'VVV";
@@ -61,14 +53,14 @@ builder.Services.AddApiVersioning(options =>
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
-// 3. CONFIGURAR SWAGGER PARA MÚLTIPLES VERSIONES
+//CONFIGURAR SWAGGER PARA MÚLTIPLES VERSIONES
 builder.Services.AddSwaggerGen();
 // ConfigureSwaggerOptions (Swagger/ConfigureSwaggerOptions.cs) crea un SwaggerDoc por versión.
 // Al registrarla como IConfigureOptions, el contenedor le inyecta IApiVersionDescriptionProvider.
 builder.Services.ConfigureOptions<ConfigureSwaggerOptions>();
 
 
-// 1. CONFIGURAR POLÍTICAS DE RATE LIMITING
+//CONFIGURAR POLÍTICAS DE RATE LIMITING
 builder.Services.AddRateLimiter(options =>
 {
 options.AddFixedWindowLimiter("LimiteAdmin", limiterOptions =>
@@ -103,7 +95,6 @@ options.AddFixedWindowLimiter("LimiteAdmin", limiterOptions =>
     };
 });
 
-// Program.cs
 builder.Services.AddStackExchangeRedisCache(options =>
 {
     // Lee de la variable de entorno Redis__Configuration, o usa localhost como fallback
@@ -136,9 +127,7 @@ builder.Services.AddCors(options =>
 });
 builder.Services.AddScoped<IProductoService, ProductoService>();
 
-
-
-// 1. CONFIGURAR ASP.NET CORE IDENTITY
+//CONFIGURAR ASP.NET CORE IDENTITY
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
     // Configuración de seguridad de contraseñas
@@ -155,7 +144,7 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 .AddEntityFrameworkStores<AppDbContext>() // Usa nuestro DbContext existente
 .AddDefaultTokenProviders();
 
-// 2. CONFIGURAR JWT PARA LEER LOS USUARIOS DE IDENTITY
+//CONFIGURAR JWT PARA LEER LOS USUARIOS DE IDENTITY
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "ClaveSuperSecretaDeProduccion1234567890!";
 var key1 = Encoding.UTF8.GetBytes(jwtKey); // UTF8 para que coincida con la firma del AuthController
 
@@ -184,8 +173,6 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddMassTransit( x=>
 {
     x.AddConsumer<ProductoCreadoConsumer>();
-
-
 x.UsingRabbitMq((context, cfg) =>
 {
     cfg.Host("rabbitmq", "/", h =>
@@ -294,4 +281,3 @@ finally
 {
     Log.CloseAndFlush();
 }
-
