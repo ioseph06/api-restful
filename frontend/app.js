@@ -91,11 +91,10 @@ async function loadProductos(page = 1) {
     try {
         const token = localStorage.getItem('token');
         const url = `${API_BASE_URL}/productos?pageNumber=${page}&pageSize=${pageSize}${search ? `&nombre=${search}` : ''}`;
-        
+            
         const response = await fetch(url, {
             headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
+                'Authorization': `Bearer ${token}`,                
             }
         });
 
@@ -105,8 +104,8 @@ async function loadProductos(page = 1) {
         }
 
         if (!response.ok) throw new Error('Error al cargar productos');
-
         const data = await response.json();
+                
         renderProductos(data.items);
         renderPagination(data);
     } catch (error) {
@@ -176,11 +175,14 @@ function renderProductos(productos) {
     const tbody = document.getElementById('productosTable');
     const emptyState = document.getElementById('emptyState');
 
-    if (productos.length === 0) {
+
+       if (productos.length === 0) {
         tbody.innerHTML = '';
         emptyState.classList.remove('hidden');
         return;
     }
+
+    
 
     emptyState.classList.add('hidden');
     tbody.innerHTML = productos.map(p => `
@@ -204,7 +206,9 @@ function renderProductos(productos) {
 
 function renderPagination(data) {
     const pagination = document.getElementById('pagination');
-    
+console.log('Datos:', data); // Debug: Verificar datos de paginación    
+console.log('Datos de paginación:', data.totalPages); // Debug: Verificar datos de paginación
+
     if (data.totalPages <= 1) {
         pagination.classList.add('hidden');
         return;

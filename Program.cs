@@ -72,7 +72,7 @@ try
         // Política: Ventana Fija (Fixed Window)
         options.AddFixedWindowLimiter("LimitePorIP", limiterOptions =>
         {
-            limiterOptions.PermitLimit = 2; // Máximo 5 peticiones
+            limiterOptions.PermitLimit = 10; // Máximo 5 peticiones
             limiterOptions.Window = TimeSpan.FromSeconds(10); // Cada 10 segundos
             limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
             limiterOptions.QueueLimit = 0; // No poner en cola, rechazar inmediatamente si se excede
@@ -118,13 +118,24 @@ try
     builder.Services.AddAutoMapper(typeof(MappingProfile));
 
     // CORS: registrar la política que luego usamos con app.UseCors("PermitirTodo")
-    builder.Services.AddCors(options =>
+    
+    // ✅ CONFIGURACIÓN DE CORS MEJORADA
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("PermitirFrontend", policy =>
     {
-        options.AddPolicy("PermitirTodo", policy =>
-            policy.AllowAnyOrigin()
-                  .AllowAnyMethod()
-                  .AllowAnyHeader());
+        policy.WithOrigins(
+                "http://localhost:8080",
+                "http://127.0.0.1:3000",
+                "http://localhost:5041"  // Si usas Live Server de VS Code                
+            )
+            .AllowAnyMethod()              // GET, POST, PUT, DELETE
+            .AllowAnyHeader()              // Authorization, Content-Type, etc.
+            .AllowCredentials();           // Permitir cookies/credenciales si es necesario
     });
+});
+
+
     builder.Services.AddScoped<IProductoService, ProductoService>();
 
     //CONFIGURAR ASP.NET CORE IDENTITY
@@ -228,8 +239,8 @@ try
     app.UseHttpsRedirection();
     // ✅ REGISTRA EL MIDDLEWARE DE ERRORES AQUÍ (Temprano en el pipeline)
     app.UseMiddleware<ExceptionHandlingMiddleware>();
-    // El orden importa: CORS va antes de Auth y Controllers
-    app.UseCors("PermitirTodo");
+   // ✅ ACTIVAR CORS (DEBE IR ANTES DE UseAuthentication y UseAuthorization)
+app.UseCors("PermitirFrontend");
     app.UseAuthentication(); // ✅ Primero autenticamos
     app.UseAuthorization();  // ✅ Luego autorizamos
     app.MapControllers();

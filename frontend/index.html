@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API de Productos - Frontend Demo</title>
+    <!-- Tailwind CSS desde CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome para iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-100">
+    <!-- Contenedor principal -->
+    <div class="min-h-screen py-8">
+        <div class="container mx-auto px-4 max-w-6xl">
+            
+            <!-- Header -->
+            <div class="text-center mb-8">
+                <h1 class="text-4xl font-bold text-gray-800 mb-2">
+                    <i class="fas fa-box-open text-blue-600"></i> Catálogo de Productos
+                </h1>
+                <p class="text-gray-600">Demo de consumo de API RESTful con ASP.NET Core</p>
+            </div>
+
+            <!-- Sección de Login (oculta cuando está autenticado) -->
+            <div id="loginSection" class="bg-white rounded-lg shadow-lg p-8 mb-8 max-w-md mx-auto">
+                <h2 class="text-2xl font-bold mb-6 text-center text-gray-800">
+                    <i class="fas fa-sign-in-alt text-green-600"></i> Iniciar Sesión
+                </h2>
+                <form id="loginForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                        <input type="email" id="loginEmail" required
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="usuario@ejemplo.com">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Contraseña</label>
+                        <input type="password" id="loginPassword" required
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="••••••••">
+                    </div>
+                    <button type="submit"
+                        class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-200 font-semibold">
+                        <i class="fas fa-sign-in-alt"></i> Entrar
+                    </button>
+                </form>
+                <div id="loginError" class="mt-4 p-3 bg-red-100 text-red-700 rounded-lg hidden"></div>
+                
+                <!-- Botón de registro -->
+                <div class="mt-6 text-center">
+                    <p class="text-sm text-gray-600">¿No tienes cuenta?</p>
+                    <button onclick="showRegisterModal()" class="text-blue-600 hover:text-blue-800 font-semibold">
+                        Regístrate aquí
+                    </button>
+                </div>
+            </div>
+
+            <!-- Sección principal (oculta hasta autenticarse) -->
+            <div id="mainSection" class="hidden">
+                
+                <!-- Barra de usuario -->
+                <div class="bg-white rounded-lg shadow-lg p-4 mb-6 flex justify-between items-center">
+                    <div>
+                        <span class="text-gray-700">Bienvenido, </span>
+                        <span id="userEmail" class="font-semibold text-blue-600"></span>
+                        <span id="userRoles" class="ml-2 text-sm text-gray-500"></span>
+                    </div>
+                    <button onclick="logout()" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition">
+                        <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+                    </button>
+                </div>
+
+                <!-- Controles -->
+                <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+                    <div class="flex flex-wrap gap-4 items-center justify-between">
+                        <button onclick="showCreateModal()" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition">
+                            <i class="fas fa-plus"></i> Nuevo Producto
+                        </button>
+                        <div class="flex gap-2">
+                            <input type="text" id="searchInput" placeholder="Buscar por nombre..."
+                                class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <button onclick="loadProductos()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+                                <i class="fas fa-search"></i> Buscar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabla de productos -->
+                <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-800 text-white">
+                                <tr>
+                                    <th class="px-6 py-3 text-left">ID</th>
+                                    <th class="px-6 py-3 text-left">Nombre</th>
+                                    <th class="px-6 py-3 text-left">Precio</th>
+                                    <th class="px-6 py-3 text-left">Stock</th>
+                                    <th class="px-6 py-3 text-left">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="productosTable" class="divide-y divide-gray-200">
+                                <!-- Se llena dinámicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="loadingIndicator" class="p-8 text-center text-gray-500 hidden">
+                        <i class="fas fa-spinner fa-spin text-3xl"></i>
+                        <p class="mt-2">Cargando productos...</p>
+                    </div>
+                    <div id="emptyState" class="p-8 text-center text-gray-500 hidden">
+                        <i class="fas fa-inbox text-5xl mb-4"></i>
+                        <p>No se encontraron productos</p>
+                    </div>
+                </div>
+
+                <!-- Paginación -->
+                <div id="pagination" class="mt-6 flex justify-center gap-2 hidden">
+                    <!-- Se llena dinámicamente -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Crear Producto -->
+    <div id="createModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-2xl p-8 max-w-md w-full mx-4">
+            <h3 class="text-2xl font-bold mb-6 text-gray-800">
+                <i class="fas fa-plus-circle text-green-600"></i> Crear Producto
+            </h3>
+            <form id="createForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Nombre</label>
+                    <input type="text" id="createNombre" required
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Precio</label>
+                    <input type="number" id="createPrecio" step="0.01" required
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+                </div>
+                <div class="flex items-center">
+                    <input type="checkbox" id="createEnStock" checked class="mr-2">
+                    <label for="createEnStock" class="text-sm font-medium text-gray-700">En Stock</label>
+                </div>
+                <div class="flex gap-3 pt-4">
+                    <button type="submit" class="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition">
+                        <i class="fas fa-save"></i> Guardar
+                    </button>
+                    <button type="button" onclick="hideCreateModal()" class="flex-1 bg-gray-500 text-white py-2 px-4 rounded-lg hover:bg-gray-600 transition">
+                        Cancelar
+                    </button>
+                </div>
+            </form>
+            <div id="createError" class="mt-4 p-3 bg-red-100 text-red-700 rounded-lg hidden"></div>
+        </div>
+    </div>
+
+    <!-- Modal para Registro -->
+    <div id="registerModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-2xl p-8 max-w-md w-full mx-4">
+            <h3 class="text-2xl font-bold mb-6 text-gray-800">
+                <i class="fas fa-user-plus text-blue-600"></i> Registrarse
+            </h3>
+            <form id="registerForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                    <input type="email" id="registerEmail" required
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Contraseña</label>
+                    <input type="password" id="registerPassword" required minlength="8"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    <p class="text-xs text-gray-500 mt-1">Mínimo 8 caracteres, 1 mayúscula, 1 número</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Confirmar Contraseña</label>
+                    <input type="password" id="registerConfirmPassword" required
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="flex gap-3 pt-4">
+                    <button type="submit" class="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition">
+                        <i class="fas fa-user-plus"></i> Registrarse
+                    </button>
+                    <button type="button" onclick="hideRegisterModal()" class="flex-1 bg-gray-500 text-white py-2 px-4 rounded-lg hover:bg-gray-600 transition">
+                        Cancelar
+                    </button>
+                </div>
+            </form>
+            <div id="registerError" class="mt-4 p-3 bg-red-100 text-red-700 rounded-lg hidden"></div>
+            <div id="registerSuccess" class="mt-4 p-3 bg-green-100 text-green-700 rounded-lg hidden"></div>
+        </div>
+    </div>
+
+    <!-- Notificaciones -->
+    <div id="notification" class="fixed top-4 right-4 z-50 hidden">
+        <div class="bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg">
+            <i class="fas fa-check-circle"></i>
+            <span id="notificationMessage"></span>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MiPrimeraApi.DTOs;
 using MiPrimeraApi.Services;
+using MiPrimeraApi.Common;       // ✅ Nuevo: Para PagedResult
 using Microsoft.AspNetCore.RateLimiting; // ✅ Nuevo using
 using Asp.Versioning; // ✅ Nuevo using
 
@@ -22,31 +23,22 @@ namespace MiPrimeraApi.Controllers
             _productoService = productoService;
             _logger = logger;
         }
+ 
+// Controllers/ProductosController.cs
 
+[HttpGet]
+public async Task<ActionResult<PagedResult<ProductoDto>>> ObtenerPaginado(
+    [FromQuery] ProductoQueryParams queryParams)  // ✅ En controladores MVC se usa [FromQuery], no [AsParameters] (eso es de Minimal APIs)
+{
+    _logger.LogInformation(
+        "📥 Solicitud de productos: Página {Page}, Tamaño {Size}", 
+        queryParams.PageNumber, 
+        queryParams.PageSize);
 
-        // Controllers/ProductosController.cs
-        //[HttpGet]
-        //public async Task<ActionResult<PagedResult<ProductoDto>>> ObtenerPaginado([AsParameters] ProductoQueryParams queryParams)
-        //{
-        //    var resultado = await _productoService.ObtenerPaginadoAsync(queryParams);
-        //    return Ok(resultado);
-        //}
+    var resultado = await _productoService.ObtenerPaginadoAsync(queryParams);
+    return Ok(resultado);
+}
 
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<ProductoDto>>> ObtenerTodos(
-            [FromQuery] string? nombre,
-            [FromQuery] bool? enStock)
-        {
-            var productos = await _productoService.ObtenerTodosAsync();
-
-            if (!string.IsNullOrWhiteSpace(nombre))
-                productos = productos.Where(p => p.Nombre.Contains(nombre, System.StringComparison.OrdinalIgnoreCase));
-
-            if (enStock.HasValue)
-                productos = productos.Where(p => p.EnStock == enStock.Value);
-
-            return Ok(productos);
-        }
 
         [HttpGet("{id}")]
         public async Task<ActionResult<ProductoDto>> ObtenerPorId(int id)
@@ -97,8 +89,6 @@ namespace MiPrimeraApi.Controllers
                 return NotFound();
             return NoContent();
         }
-
-
 
     }
 }
