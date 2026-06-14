@@ -12,14 +12,14 @@ namespace MiPrimeraApi.Controllers
 {
     [ApiController]
     [ApiVersion("1.0")] // ✅ Declaramos que este controlador es la v1.0
-    //[Route("api/[controller]")]
-     [Route("api/v{version:apiVersion}/[controller]")] 
+                        //[Route("api/[controller]")]
+    [Route("api/v{version:apiVersion}/[controller]")]
     [Authorize]
     [EnableRateLimiting("LimitePorIP")] // Aplica la política de rate limiting a este controlador
     public class ProductosController : ControllerBase
     {
         private readonly IProductoService _productoService;
-   private readonly ILogger<ProductosController> _logger; // 🌟 Inyección del Logger
+        private readonly ILogger<ProductosController> _logger; // 🌟 Inyección del Logger
         public ProductosController(IProductoService productoService, ILogger<ProductosController> logger)
         {
             _productoService = productoService;
@@ -27,17 +27,17 @@ namespace MiPrimeraApi.Controllers
         }
 
 
-// Controllers/ProductosController.cs
-//[HttpGet]
-//public async Task<ActionResult<PagedResult<ProductoDto>>> ObtenerPaginado([AsParameters] ProductoQueryParams queryParams)
-//{
-//    var resultado = await _productoService.ObtenerPaginadoAsync(queryParams);
-//    return Ok(resultado);
-//}
+        // Controllers/ProductosController.cs
+        //[HttpGet]
+        //public async Task<ActionResult<PagedResult<ProductoDto>>> ObtenerPaginado([AsParameters] ProductoQueryParams queryParams)
+        //{
+        //    var resultado = await _productoService.ObtenerPaginadoAsync(queryParams);
+        //    return Ok(resultado);
+        //}
 
         [HttpGet]
         public async Task<ActionResult<IEnumerable<ProductoDto>>> ObtenerTodos(
-            [FromQuery] string? nombre, 
+            [FromQuery] string? nombre,
             [FromQuery] bool? enStock)
         {
             var productos = await _productoService.ObtenerTodosAsync();
@@ -63,17 +63,16 @@ namespace MiPrimeraApi.Controllers
         [Authorize] // Solo los usuarios con rol "Admin" pueden crear productos
         public async Task<ActionResult<ProductoDto>> Crear([FromBody] CrearProductoDto nuevoProducto)
         {
-            _logger.LogInformation("Intentando crear producto: {ProductName} con precio {Price}", 
-                nuevoProducto.Nombre, 
+            _logger.LogInformation("Intentando crear producto: {ProductName} con precio {Price}",
+                nuevoProducto.Nombre,
                 nuevoProducto.Precio);
 
             try
             {
                 var creado = await _productoService.CrearAsync(nuevoProducto);
-                
                 // 🌟 Log de éxito con datos estructurados (fácil de buscar después)
                 _logger.LogInformation("Producto creado exitosamente con ID: {ProductId}", creado.Id);
-                
+
                 return CreatedAtAction(nameof(ObtenerPorId), new { id = creado.Id }, creado);
             }
             catch (Exception ex)

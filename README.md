@@ -27,3 +27,11 @@ Tener instalado [Docker Desktop](https://www.docker.com/products/docker-desktop)
    ```bash
    git clone https://github.com/TU_USUARIO/api-restful.git
    cd api-restful
+
+
+# 🚀 API RESTful de Productos (Enterprise)
+
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=ioseph06_api-restful&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=ioseph06_api-restful)
+[![.NET CI & SonarCloud Analysis](https://github.com/ioseph06/api-restful/actions/workflows/ci.yml/badge.svg)](https://github.com/ioseph06_api-restful/actions/workflows/ci.yml)
+
+API robusta y escalable para la gestión de un catálogo de productos...
